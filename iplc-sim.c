@@ -51,7 +51,7 @@ typedef struct cache_line
     // a method for handling varying levels of associativity
     // a method for selecting which item in the cache is going to be replaced
     block_t * set; //holds all the items in the same set (by associativity)
-    int * replacement; //queue of items by age
+    int * replacement; //queue of items by age - [0] is LRU and [assoc - 1] is MRU
 } cache_line_t;
 
 cache_line_t *cache=NULL;
@@ -167,12 +167,12 @@ void iplc_sim_init(int index, int blocksize, int assoc)
         exit(-1);
     }
     
-    cache = (cache_line_t *) malloc((sizeof(cache_line_t) * 1<<index));
+    cache = (cache_line_t *) calloc(1<<index, sizeof(cache_line_t));
     
     // Dynamically create our cache based on the information the user entered
     for (i = 0; i < (1<<index); i++) {
-        cache[i].set = (block_t *)malloc((sizeof(block_t) * assoc));
-        cache[i].replacement = (int *)malloc((sizeof(int) * assoc));
+        cache[i].set = (block_t *)calloc(assoc, sizeof(block_t));
+        cache[i].replacement = (int *)calloc(assoc, sizeof(int));
  
          for(j = 0; j < assoc; j++){
              cache[i].set[j].valid = 0;
@@ -194,7 +194,20 @@ void iplc_sim_init(int index, int blocksize, int assoc)
  */
 void iplc_sim_LRU_replace_on_miss(int index, int tag)
 {
-    /* You must implement this function */
+    int i;
+    int least = 0;
+    //replace first item in the queue of the items in the slot
+    least = cache[index].replacement[0];
+    //change all other items, moving them based on the spot being removed
+    for(i = 1; i < cache_assoc; i++){
+        cache[index].replacement[i - 1] = cache[index].replacement[i];
+    }
+    //add the index to be replaced to the MRU spot
+    cache[index].replacement[cache_assoc - 1] = least;
+    //replace by updating the tag and the valid bit (just in case)
+    cache[index].set[least].tag = tag;
+    cache[index].set[least].valid = 1;
+    
 }
 
 /*
@@ -203,7 +216,20 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
  */
 void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
 {
-    /* You must implement this function */
+    int i;
+    int entry;
+    //first, find the entry in the queue of entries by age
+    for(i = 0; i < cache_assoc; i++){
+        if(cache[index].replacement[i] == assoc_entry){
+            entry = i;
+        }
+    }
+    //then, move all of the entries more recently used to make space for the MRU at the end
+    for(i = entry + 1; i < cache_assoc; i++){
+        cache[index].replacement[i - 1] = cache[index].replacement[i];
+    }
+    //then, update the MRU in the final entry in the queue
+    cache[index].replacement[cache_assoc - 1] = entry;
 }
 
 /*
