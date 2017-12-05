@@ -217,9 +217,45 @@ int iplc_sim_trap_address(unsigned int address)
     int i=0, index=0;
     int tag=0;
     int hit=0;
+	int set_num=0;
+	
+	// Find the tag, index, and set from the address
+	tag = address >> (cache_blockoffsetbits + cache_index);
+	index = address << (32 - (cache_blockoffsetbits + cache_index));
+	index = index >> (32 - cache_index);
+	set_num = index % (1<<cache_index);
+	
+	// Check each entry in the set in which the data belongs
+	for (i = 0; i < cache_assoc; i++)
+	{
+		// If the loop gets to an entry with no data (0 valid bit), it is a miss
+		if (cache[set_num].set[i].valid == 0)
+		{
+			break;
+		}
+		// If the loop gets to an entry with the same tag, it is a hit
+		else if (cache[set_num].set[i].tag == tag)
+		{
+			hit = 1;
+			break;
+		}
+	}
     
     // Call the appropriate function for a miss or hit
-
+	if (cache_assoc == 1 && !hit)
+	{
+		cache[set_num].set[0].tag = tag;
+		cache[set_num].set[0].valid = 1;
+	}
+	else if (hit)
+	{
+		iplc_sim_LRU_update_on_hit(index, i);
+	}
+	else
+	{
+		iplc_sim_LRU_replace_on_miss(index, tag);
+	}
+	
     /* expects you to return 1 for hit, 0 for miss */
     return hit;
 }
