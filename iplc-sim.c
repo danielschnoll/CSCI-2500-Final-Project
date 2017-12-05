@@ -247,8 +247,8 @@ int iplc_sim_trap_address(unsigned int address)
 	
 	// Find the tag, index, and set from the address
 	tag = address >> (cache_blockoffsetbits + cache_index);
-	index = address << (32 - (cache_blockoffsetbits + cache_index));
-	index = index >> (32 - cache_index);
+	index = address >> (32 - (cache_blockoffsetbits + cache_index));
+	index = index << (32 - cache_index);
 	set_num = index % (1<<cache_index);
 	
 	// Check each entry in the set in which the data belongs
