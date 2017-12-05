@@ -39,8 +39,8 @@ void iplc_sim_finalize();
 
 typedef struct block
 {
-    short int valid; //valid bit
-    int tag;
+    unsigned short int valid; //valid bit
+    unsigned int tag;
 }block_t;
 
 typedef struct cache_line
@@ -51,7 +51,7 @@ typedef struct cache_line
     // a method for handling varying levels of associativity
     // a method for selecting which item in the cache is going to be replaced
     block_t * set; //holds all the items in the same set (by associativity)
-    int * replacement; //queue of items by age - [0] is LRU and [assoc - 1] is MRU
+    unsigned int * replacement; //queue of items by age - [0] is LRU and [assoc - 1] is MRU
 } cache_line_t;
 
 cache_line_t *cache=NULL;
@@ -172,7 +172,7 @@ void iplc_sim_init(int index, int blocksize, int assoc)
     // Dynamically create our cache based on the information the user entered
     for (i = 0; i < (1<<index); i++) {
         cache[i].set = (block_t *)calloc(assoc, sizeof(block_t));
-        cache[i].replacement = (int *)calloc(assoc, sizeof(int));
+        cache[i].replacement = (unsigned int *)calloc(assoc, sizeof(unsigned int));
  
          for(j = 0; j < assoc; j++){
              cache[i].set[j].valid = 0;
@@ -204,7 +204,7 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
     }
     //add the index to be replaced to the MRU spot
     cache[index].replacement[cache_assoc - 1] = least;
-    //replace by updating the tag and the valid bit (just in case)
+    //replace by updating the tag and the valid bit (just in case the cache was not full during the miss)
     cache[index].set[least].tag = tag;
     cache[index].set[least].valid = 1;
     
@@ -217,11 +217,12 @@ void iplc_sim_LRU_replace_on_miss(int index, int tag)
 void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
 {
     int i;
-    int entry;
+    int entry = 0;
     //first, find the entry in the queue of entries by age
     for(i = 0; i < cache_assoc; i++){
         if(cache[index].replacement[i] == assoc_entry){
             entry = i;
+            break;
         }
     }
     //then, move all of the entries more recently used to make space for the MRU at the end
@@ -367,7 +368,19 @@ void iplc_sim_push_pipeline_stage()
     
     /* 2. Check for BRANCH and correct/incorrect Branch Prediction */
     if (pipeline[DECODE].itype == BRANCH) {
+        branch_count++;
         int branch_taken = 0;
+        //if the branch prediction is to predict not taken, the next address loaded should be the next address
+        if(branch_predict_taken == 0){
+           branch_taken = 0;//(location of next instruction == pipeline[DECODE].instruction_address + 4); 
+        } 
+        //if the branch prediction is to predict taken, the next address loaded shou
+        else {
+            branch_taken = 0;//location of next instruction == pipeline[DECODE].reg2);    
+        }
+        if(branch_taken){
+            correct_branch_predictions++;
+        }
     }
     
     /* 3. Check for LW delays due to use in ALU stage and if data hit/miss
