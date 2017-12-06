@@ -70,7 +70,7 @@ char offsetwithreg[16];
 unsigned int data_address=0;
 unsigned int instruction_address=0;
 unsigned int pipeline_cycles=0;   // how many cycles did you pipeline consume
-unsigned int instruction_count=0; // home many real instructions ran thru the pipeline
+unsigned int instruction_count=0; // how many real instructions ran thru the pipeline
 unsigned int branch_predict_taken=0;
 unsigned int branch_count=0;
 unsigned int correct_branch_predictions=0;
@@ -274,8 +274,8 @@ int iplc_sim_trap_address(unsigned int address)
             iplc_sim_LRU_replace_on_miss(index, tag);
         }
         else{
-            cache[index].assoc[0].tag = tag;
-            cache[index].assoc[0].valid = 1;
+            cache[index].set[0].tag = tag;
+            cache[index].set[0].valid = 1;
         }
     }
 	
@@ -351,7 +351,7 @@ void iplc_sim_dump_pipeline()
  */
 void iplc_sim_push_pipeline_stage()
 {
-    int i;
+    int r;
     int data_hit=1;
     
     /* 1. Count WRITEBACK stage is "retired" -- This I'm giving you */
@@ -364,19 +364,24 @@ void iplc_sim_push_pipeline_stage()
     
     /* 2. Check for BRANCH and correct/incorrect Branch Prediction */
     if (pipeline[DECODE].itype == BRANCH) {
-        branch_count++;
+        branch_count++; //it's a branch
         int branch_taken = 0;
-        //if the branch prediction is to predict not taken, the next address loaded should be the next address
-        if(branch_predict_taken == 0){
-           branch_taken = 0;//(location of next instruction == pipeline[DECODE].instruction_address + 4); 
-        } 
-        //if the branch prediction is to predict taken, the next address loaded shou
-        else {
-            branch_taken = 0;//location of next instruction == pipeline[DECODE].reg2);    
+        //if the next instruction loaded is not the next instruction, the branch is taken
+        if(pipeline[FETCH].instruction_address != pipeline[DECODE].instruction_address + 4){
+            branch_taken = 1;
         }
-        if(branch_taken){
+        //if the branch is not correctly predicted, add one cycle, push stages through (up to decode, which stays the same), and insert a nop
+        if(branch_taken != branch_predict_taken){
+            pipeline_cycles++;
+            for(r = MAX_STAGES - 1; r != DECODE; r--){
+                memcpy(&pipeline[r], &pipeline[r-1], sizeof(pipeline_t));
+            }
+            bzero(&(pipeline[DECODE]), sizeof(pipeline_t));//put the nop in nope
+        //if the branch is correctly predicted, then you correctly predicted a branch
+        } else { 
             correct_branch_predictions++;
         }
+
     }
     
     /* 3. Check for LW delays due to use in ALU stage and if data hit/miss
@@ -393,8 +398,8 @@ void iplc_sim_push_pipeline_stage()
     /* 5. Increment pipe_cycles 1 cycle for normal processing */
     pipeline_cycles++;
 
-    /* 6. push stages thru MEM->WB, ALU->MEM, DECODE->ALU, FETCH->ALU */
-    for(int r = MAX_STAGES-1; r != FETCH; r--){
+    /* 6. push stages thru MEM->WB, ALU->MEM, DECODE->ALU, FETCH->DECODE */
+    for(r = MAX_STAGES-1; r != FETCH; r--){
         //Stops before FETCH because it swaps with the previous stage
         memcpy(&pipeline[r], &pipeline[r-1], sizeof(pipeline_t));
     }
