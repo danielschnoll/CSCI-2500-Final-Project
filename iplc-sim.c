@@ -391,8 +391,17 @@ void iplc_sim_push_pipeline_stage()
         int inserted_nop = 0;
     }
     
-    /* 4. Check for SW mem acess and data miss .. add delay cycles if needed */
+    /* 4. Check for SW mem access and data miss .. add delay cycles if needed */
     if (pipeline[MEM].itype == SW) {
+        //use trap_address to determine whether the data is in the cache
+        data_hit = iplc_sim_trap_address(pipeline[MEM].stage.sw.data_address);
+        //if a miss, increment cycles by miss penalty (not including this instruction)
+        if(!data_hit){
+            pipeline_cycles += CACHE_MISS_DELAY - 1;
+            printf("\n\n\nDATA MISS:\t Address 0x%x \n",pipeline[MEM].stage.sw.data_address);
+        } else{
+            printf("\n\n\nDATA HIT:\t Address 0x%x \n",pipeline[MEM].stage.sw.data_address);
+        }
     }
     
     /* 5. Increment pipe_cycles 1 cycle for normal processing */
