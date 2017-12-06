@@ -244,44 +244,40 @@ int iplc_sim_trap_address(unsigned int address)
     int i=0, index=0;
     int tag=0;
     int hit=0;
-	int set_num=0;
+
+    cache_access++;
 	
 	// Find the tag, index, and set from the address
 	tag = address >> (cache_blockoffsetbits + cache_index);
-	index = address >> (32 - (cache_blockoffsetbits + cache_index));
-	index = index << (32 - cache_index);
-	set_num = index % (1<<cache_index);
-	
-	// Check each entry in the set in which the data belongs
-	for (i = 0; i < cache_assoc; i++)
-	{
-		// If the loop gets to an entry with no data (0 valid bit), it is a miss
-		if (cache[set_num].set[i].valid == 0)
-		{
-			break;
-		}
-		// If the loop gets to an entry with the same tag, it is a hit
-		else if (cache[set_num].set[i].tag == tag)
-		{
-			hit = 1;
-			break;
-		}
-	}
+	index = (address >> cache_blockoffsetbits) % (1 << cache_index);
+
+    for(i=0; i<cache_assoc; ++i){
+        //If the entry is valid and the tags match, cache hits.
+        if(cache[index].set[i].valid && cache[index].set[i].tag == tag){
+            cache_hit++;
+            hit = 1;
+
+            //Update set if not direct associative
+            if(cache_assoc > 1){
+                iplc_sim_LRU_update_on_hit(index, i);
+            }
+            break;
+        }
+    }
     
-    // Call the appropriate function for a miss or hit
-	if (cache_assoc == 1 && !hit)
-	{
-		cache[set_num].set[0].tag = tag;
-		cache[set_num].set[0].valid = 1;
-	}
-	else if (hit)
-	{
-		iplc_sim_LRU_update_on_hit(index, i);
-	}
-	else
-	{
-		iplc_sim_LRU_replace_on_miss(index, tag);
-	}
+    if(!hit){
+        cache_miss++;
+        //printf("DATA MISS:\t Address 0x%x \n",address);
+        //Update the assoc set with the new entry if > 1 associativity
+        //Otherwise, update spot in cache with new tag and set valid true (direct assoc).
+        if( cache_assoc > 1){
+            iplc_sim_LRU_replace_on_miss(index, tag);
+        }
+        else{
+            cache[index].assoc[0].tag = tag;
+            cache[index].assoc[0].valid = 1;
+        }
+    }
 	
     /* expects you to return 1 for hit, 0 for miss */
     return hit;
@@ -396,7 +392,12 @@ void iplc_sim_push_pipeline_stage()
     
     /* 5. Increment pipe_cycles 1 cycle for normal processing */
     pipeline_cycles++;
+
     /* 6. push stages thru MEM->WB, ALU->MEM, DECODE->ALU, FETCH->ALU */
+    for(int r = MAX_STAGES-1; r != FETCH; r--){
+        //Stops before FETCH because it swaps with the previous stage
+        memcpy(&pipeline[r], &pipeline[r-1], sizeof(pipeline_t));
+    }
     
     // 7. This is a give'me -- Reset the FETCH stage to NOP via bezero */
     bzero(&(pipeline[FETCH]), sizeof(pipeline_t));
