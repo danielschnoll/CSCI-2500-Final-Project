@@ -404,7 +404,7 @@ void iplc_sim_push_pipeline_stage()
         }
         //Is ALU stage an RTYPE instruction? If so, are we using registers from MEM?
         int instructionLengthALU = strlen(pipeline[ALU].stage.rtype.instruction);
-        if( (pipeline[ALU].itype = RTYPE)){
+        if( pipeline[ALU].itype == RTYPE){
             //If LW.dest_reg is used in the ALU registers
             //If dest_reg is reg2_or_constant, instruction cannot end in 'i'
             if((pipeline[ALU].stage.rtype.reg1 == pipeline[MEM].stage.lw.dest_reg) ||
