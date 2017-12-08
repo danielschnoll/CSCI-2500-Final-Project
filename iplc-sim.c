@@ -353,6 +353,8 @@ void iplc_sim_push_pipeline_stage()
 {
     int r;
     int data_hit=1;
+    int branch_taken=0;
+    int inserted_nop=0;
     
     /* 1. Count WRITEBACK stage is "retired" -- This I'm giving you */
     if (pipeline[WRITEBACK].instruction_address) {
@@ -365,7 +367,6 @@ void iplc_sim_push_pipeline_stage()
     /* 2. Check for BRANCH and correct/incorrect Branch Prediction */
     if (pipeline[DECODE].itype == BRANCH) {
         branch_count++; //it's a branch
-        int branch_taken = 0;
         //if the next instruction loaded is not the next instruction, the branch is taken
         if(pipeline[FETCH].instruction_address!=0 && (pipeline[FETCH].instruction_address - 
         pipeline[DECODE].instruction_address != 4)){
@@ -388,8 +389,38 @@ void iplc_sim_push_pipeline_stage()
     /* 3. Check for LW delays due to use in ALU stage and if data hit/miss
      *    add delay cycles if needed.
      */
-    if (pipeline[MEM].itype == LW) {
-        int inserted_nop = 0;
+    if(pipeline[MEM].itype == LW ){
+        //Look for data_address in the cache with trap_address
+        data_hit = iplc_sim_trap_address( pipeline[MEM].stage.lw.data_address);
+        if(!data_hit){
+            printf("DATA MISS:\t Address 0x%x \n",pipeline[MEM].stage.lw.data_address);
+
+            //If not found, increment cycles by the cache delay - 1 (for this instruction)
+            pipeline_cycles += CACHE_MISS_DELAY - 1;
+            //Include the inserted nop in the delay if it was needed
+        } 
+        else {
+            printf("DATA HIT:\t Address 0x%x \n",pipeline[MEM].stage.lw.data_address);
+        }
+        //Is ALU stage an RTYPE instruction? If so, are we using registers from MEM?
+        int instructionLengthALU = strlen(pipeline[ALU].stage.rtype.instruction);
+        if( (pipeline[ALU].itype = RTYPE)){
+            //If LW.dest_reg is used in the ALU registers
+            //If dest_reg is reg2_or_constant, instruction cannot end in 'i'
+            if((pipeline[ALU].stage.rtype.reg1 == pipeline[MEM].stage.lw.dest_reg) ||
+            ((pipeline[ALU].stage.rtype.reg2_or_constant == pipeline[MEM].stage.lw.dest_reg)
+            && pipeline[ALU].stage.rtype.instruction[instructionLengthALU - 1] != 'i')){
+                pipeline_cycles++;
+                inserted_nop = 1;
+                memcpy(&pipeline[WRITEBACK], &pipeline[MEM], sizeof(pipeline_t));
+                bzero( &(pipeline[MEM]), sizeof(pipeline_t));
+
+                if (pipeline[WRITEBACK].instruction_address){
+                    //instruction_count++;
+                }
+            } 
+        }
+      if(!data_hit && inserted_nop) pipeline_cycles--;
     }
     
     /* 4. Check for SW mem access and data miss .. add delay cycles if needed */
