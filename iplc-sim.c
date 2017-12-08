@@ -230,7 +230,7 @@ void iplc_sim_LRU_update_on_hit(int index, int assoc_entry)
         cache[index].replacement[i - 1] = cache[index].replacement[i];
     }
     //then, update the MRU in the final entry in the queue
-    cache[index].replacement[cache_assoc - 1] = entry;
+    cache[index].replacement[cache_assoc - 1] = assoc_entry;
 }
 
 /*
