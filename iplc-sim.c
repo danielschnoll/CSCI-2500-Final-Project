@@ -267,7 +267,9 @@ int iplc_sim_trap_address(unsigned int address)
     
     if(!hit){
         cache_miss++;
-        //printf("DATA MISS:\t Address 0x%x \n",address);
+        
+        printf("DATA MISS:\t Address 0x%x \n",address);
+        
         //Update the assoc set with the new entry if > 1 associativity
         //Otherwise, update spot in cache with new tag and set valid true (direct assoc).
         if( cache_assoc > 1){
