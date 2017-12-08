@@ -367,11 +367,12 @@ void iplc_sim_push_pipeline_stage()
         branch_count++; //it's a branch
         int branch_taken = 0;
         //if the next instruction loaded is not the next instruction, the branch is taken
-        if(pipeline[FETCH].instruction_address != pipeline[DECODE].instruction_address + 4){
+        if(pipeline[FETCH].instruction_address!=0 && (pipeline[FETCH].instruction_address - 
+        pipeline[DECODE].instruction_address != 4)){
             branch_taken = 1;
         }
         //if the branch is not correctly predicted, add one cycle, push stages through (up to decode, which stays the same), and insert a nop
-        if(branch_taken != branch_predict_taken){
+        if(pipeline[FETCH].instruction_address!=0 && branch_taken != branch_predict_taken){
             pipeline_cycles++;
             for(r = MAX_STAGES - 1; r != DECODE; r--){
                 memcpy(&pipeline[r], &pipeline[r-1], sizeof(pipeline_t));
