@@ -414,6 +414,10 @@ void iplc_sim_push_pipeline_stage()
                 inserted_nop = 1;
                 memcpy(&pipeline[WRITEBACK], &pipeline[MEM], sizeof(pipeline_t));
                 bzero( &(pipeline[MEM]), sizeof(pipeline_t));
+
+                if (pipeline[WRITEBACK].instruction_address){
+                    instruction_count++;
+                }
             } 
         }
       if(!data_hit && inserted_nop) pipeline_cycles--;
