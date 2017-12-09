@@ -383,6 +383,9 @@ void iplc_sim_push_pipeline_stage()
             for(r = MAX_STAGES - 1; r != DECODE; r--){
                 memcpy(&pipeline[r], &pipeline[r-1], sizeof(pipeline_t));
             }
+            if(pipeline[WRITEBACK].instruction_address){
+                instruction_count++;
+            }
             bzero(&(pipeline[DECODE]), sizeof(pipeline_t));//put the nop in nope
         //if the branch is correctly predicted, then you correctly predicted a branch
         } else if(pipeline[FETCH].instruction_address != 0){ 
@@ -447,9 +450,9 @@ void iplc_sim_push_pipeline_stage()
         //if a miss, increment cycles by miss penalty (not including this instruction)
         if(!data_hit){
             pipeline_cycles += CACHE_MISS_DELAY - 1;
-            printf("\n\n\nDATA MISS:\t Address 0x%x \n",pipeline[MEM].stage.sw.data_address);
+            printf("DATA MISS:\t Address 0x%x \n",pipeline[MEM].stage.sw.data_address);
         } else{
-            printf("\n\n\nDATA HIT:\t Address 0x%x \n",pipeline[MEM].stage.sw.data_address);
+            printf("DATA HIT:\t Address 0x%x \n",pipeline[MEM].stage.sw.data_address);
         }
     }
     
