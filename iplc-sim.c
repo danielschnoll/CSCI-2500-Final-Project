@@ -595,7 +595,6 @@ void iplc_sim_parse_instruction(char *buffer)
         printf("Malformed instruction \n");
         exit(-1);
     }
-    
     instruction_hit = iplc_sim_trap_address( instruction_address );
     
     // if a MISS, then push current instruction thru pipeline
