@@ -167,13 +167,16 @@ void iplc_sim_init(int index, int blocksize, int assoc)
         exit(-1);
     }
     
+    //the cache should include as many cache lines as there are indices
     cache = (cache_line_t *) calloc(1<<index, sizeof(cache_line_t));
     
     // Dynamically create our cache based on the information the user entered
     for (i = 0; i < (1<<index); i++) {
+        //each set should have assoc items, and replacement should be the same size as set
         cache[i].set = (block_t *)calloc(assoc, sizeof(block_t));
         cache[i].replacement = (unsigned int *)calloc(assoc, sizeof(unsigned int));
- 
+        //then, initialize each place in the set to have a valid bit and a tag of 0, 
+        //and replacement to hold all the possible indices of set
          for(j = 0; j < assoc; j++){
              cache[i].set[j].valid = 0;
              cache[i].set[j].tag = 0;
@@ -382,7 +385,7 @@ void iplc_sim_push_pipeline_stage()
             }
             bzero(&(pipeline[DECODE]), sizeof(pipeline_t));//put the nop in nope
         //if the branch is correctly predicted, then you correctly predicted a branch
-        } else { 
+        } else if(pipeline[FETCH].instruction_address != 0){ 
             correct_branch_predictions++;
         }
 
